@@ -42,7 +42,6 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.UUID;
-//import no.nordicsemi.android.nrftoolbox.utility.ParserUtils;
 
 /**
  * <p>The BleManager is responsible for managing the low level communication with a Bluetooth Smart device. Please see profiles implementation for an example of use.
@@ -62,7 +61,7 @@ import java.util.UUID;
  *
  * @param <E> The profile callbacks type
  */
-public abstract class BleManager<E extends BleManagerCallbacks> implements ILogger {
+public abstract class BleManager<E extends BleManagerCallbacks> {
 	private final static String TAG = "BleManager";
 
 	private final static UUID CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
@@ -74,10 +73,7 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 	private final static UUID SERVICE_CHANGED_CHARACTERISTIC = UUID.fromString("00002A05-0000-1000-8000-00805f9b34fb");
 
 	private final Object mLock = new Object();
-	/**
-	 * The log session or null if nRF Logger is not installed.
-	 */
-//	protected ILogSession mLogSession;
+
 	private final Context mContext;
 	private final Handler mHandler;
 	protected BluetoothDevice mBluetoothDevice;
@@ -109,7 +105,6 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 			final int previousState = intent.getIntExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE, BluetoothAdapter.STATE_OFF);
 
 			final String stateString = "[Broadcast] Action received: " + BluetoothAdapter.ACTION_STATE_CHANGED + ", state changed to " + state2String(state);
-//			Logger.d(mLogSession, stateString);
 
 			switch (state) {
 				case BluetoothAdapter.STATE_TURNING_OFF:
@@ -150,16 +145,12 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 			// Skip other devices
 			if (mBluetoothGatt == null || !device.getAddress().equals(mBluetoothGatt.getDevice().getAddress()))
 				return;
-//
-//			Logger.d(mLogSession, "[Broadcast] Action received: " + BluetoothDevice.ACTION_BOND_STATE_CHANGED + ", bond state changed to: " + bondStateToString(bondState) + " (" + bondState + ")");
-//			DebugLogger.i(TAG, "Bond state changed for: " + device.getName() + " new state: " + bondState + " previous: " + previousBondState);
 
 			switch (bondState) {
 				case BluetoothDevice.BOND_BONDING:
 					mCallbacks.onBondingRequired(device);
 					break;
 				case BluetoothDevice.BOND_BONDED:
-//					Logger.i(mLogSession, "Device bonded");
 					mCallbacks.onBonded(device);
 
 					// Start initializing again.
@@ -183,11 +174,8 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 
 			// String values are used as the constants are not available for Android 4.3.
 			final int variant = intent.getIntExtra("android.bluetooth.device.extra.PAIRING_VARIANT"/*BluetoothDevice.EXTRA_PAIRING_VARIANT*/, 0);
-//			Logger.d(mLogSession, "[Broadcast] Action received: android.bluetooth.device.action.PAIRING_REQUEST"/*BluetoothDevice.ACTION_PAIRING_REQUEST*/ +
-//					", pairing variant: " + pairingVariantToString(variant) + " (" + variant + ")");
 
 			// The API below is available for Android 4.4 or newer.
-
 			// An app may set the PIN here or set pairing confirmation (depending on the variant) using:
 			// device.setPin(new byte[] { '1', '2', '3', '4', '5', '6' });
 			// device.setPairingConfirmation(true);
@@ -296,7 +284,6 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 		mConnectionState = BluetoothGatt.STATE_CONNECTING;
 		mCallbacks.onDeviceConnecting(device);
 //		Logger.d(mLogSession, "gatt = device.connectGatt(autoConnect = false)");
-		BleManagerGattCallback test = getGattCallback();
 		mBluetoothGatt = device.connectGatt(mContext, false, mGattCallback = getGattCallback());
 	}
 
@@ -1137,6 +1124,11 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 			mCallbacks.onError(device, message, errorCode);
 		}
 
+		/*
+		* CT Blackbox 9
+		* This is the callbacks for connecting to the ble device
+		* I added "gatt.discoverServices()" to identify the services and characteristics so that we can read and write to them
+		*/
 		@Override
 		public final void onConnectionStateChange(final BluetoothGatt gatt, final int status, final int newState) {
 //			Logger.d(mLogSession, "[Callback] Connection state changed with status: " + status + " and new state: " + newState + " (" + stateToString(newState) + ")");
@@ -1146,7 +1138,6 @@ public abstract class BleManager<E extends BleManagerCallbacks> implements ILogg
 //				Logger.i(mLogSession, "Connected to " + gatt.getDevice().getAddress());
 				mConnected = true;
 				mConnectionState = BluetoothGatt.STATE_CONNECTED;
-				/*Testing if this will initiate the callbacks to find serviees*/
 				gatt.discoverServices();
 				mCallbacks.onDeviceConnected(gatt.getDevice());
 

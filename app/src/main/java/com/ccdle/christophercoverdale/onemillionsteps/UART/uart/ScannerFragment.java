@@ -33,17 +33,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
-import android.util.Log;
-import android.view.LayoutInflater;
+import android.support.v7.widget.OrientationHelper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ccdle.christophercoverdale.onemillionsteps.R;
@@ -54,7 +57,8 @@ import java.util.Set;
 
 import no.nordicsemi.android.support.v18.scanner.BluetoothLeScannerCompat;
 
-import static com.ccdle.christophercoverdale.onemillionsteps.UART.uart.UARTControlFragment.DEBUG_TAG;
+import static android.graphics.Color.parseColor;
+import static com.ccdle.christophercoverdale.onemillionsteps.R.attr.buttonBarButtonStyle;
 
 
 /**
@@ -72,7 +76,12 @@ public class ScannerFragment extends DialogFragment {
 
 	ScannerFragment.OnDeviceSelectedListener uartControlFragment;
 	private BluetoothAdapter mBluetoothAdapter;
-	private OnDeviceSelectedListener mListener;
+	/*
+	* CT Blackbox 2.1
+	* The OnDeviceSelectedListener will be used as a reference for callbacks when user selects a device
+	*/
+	private static OnDeviceSelectedListener mListener;
+
 	private DeviceListAdapter mAdapter;
 	private final Handler mHandler = new Handler();
 	private Button mScanButton;
@@ -83,16 +92,24 @@ public class ScannerFragment extends DialogFragment {
 
 	private boolean mIsScanning = false;
 
+	/*
+	* CT Blackbox 2.2
+	* Creating a static reference to the rootFragment
+	*/
 	private static Fragment rootFragment;
 
-	public static ScannerFragment getInstance(Fragment parentFragment) {
+	public static ScannerFragment getInstance(OnDeviceSelectedListener listener) {
 		final ScannerFragment fragment = new ScannerFragment();
 
-		rootFragment = parentFragment;
+		/*
+		* CT Blackbox 3
+		* Take the argument parentFragment and set it to the rootFragment
+		*/
+//		rootFragment = parentFragment;
+
+		mListener = listener;
 
 		final Bundle args = new Bundle();
-//		if (uuid != null)
-//			args.putParcelable(PARAM_UUID, new ParcelUuid(uuid));
 		fragment.setArguments(args);
 		return fragment;
 	}
@@ -124,13 +141,6 @@ public class ScannerFragment extends DialogFragment {
 	@Override
 	public void onAttach(final Context context) {
 		super.onAttach(context);
-//		try {
-//			this.mListener = (OnDeviceSelectedListener) context;
-//		} catch (final ClassCastException e) {
-//			throw new ClassCastException(context.toString() + " must implement OnDeviceSelectedListener");
-//		}
-//		this.uartControlFragment = new UARTControlFragment();
-//		this.mListener = this.uartControlFragment;
 	}
 
 	@Override
@@ -145,27 +155,11 @@ public class ScannerFragment extends DialogFragment {
 		final BluetoothManager manager = (BluetoothManager) getActivity().getSystemService(Context.BLUETOOTH_SERVICE);
 		mBluetoothAdapter = manager.getAdapter();
 
-//		FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
-//		String fragmentTag = fragmentManager.getBackStackEntryAt(fragmentManager.getBackStackEntryCount() - 1).getName();
-//		Fragment dashboardVCFragment =  fragmentManager.findFragmentByTag(fragmentTag);
-
-//		try {
-//			this.mListener = this.uartControlFragment ;
-//		} catch (final ClassCastException e)  {
-//			throw new ClassCastException(uartControlFragment.toString() + " must implement OnDeviceSelectedListener");
-//		}
-		if (getParentFragment() != null) {
-			Log.e(DEBUG_TAG, "Name of parent fragment: " + getParentFragment().toString());
-		} else {
-			Log.e(DEBUG_TAG, "Parent Fragment is null");
-		}
-		this.mListener = (OnDeviceSelectedListener) rootFragment;
-
-		if (mListener != null) {
-			Log.e(DEBUG_TAG, "Listener reference is not null");
-		} else {
-			Log.e(DEBUG_TAG, "Listener reference is null");
-		}
+		/*
+		* CT Blackbox 4
+		* Set the listener for the call backs when user selects a device to the root fragment
+		*/
+//		this.mListener = (OnDeviceSelectedListener) rootFragment;
 	}
 
 	@Override
@@ -178,8 +172,11 @@ public class ScannerFragment extends DialogFragment {
     @Override
 	public Dialog onCreateDialog(final Bundle savedInstanceState) {
 		final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-		final View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.fragment_device_selection, null);
-		final ListView listview = (ListView) dialogView.findViewById(android.R.id.list);
+//		final View dialogView = LayoutInflater.from(getActivity()).inflate(R.layout.fragment_device_selection, null);
+
+		final View dialogView = fragmentDeviceSelection();
+		final ListView listview = (ListView) dialogView.findViewById(R.id.list);
+
 
 		listview.setEmptyView(dialogView.findViewById(android.R.id.empty));
 		listview.setAdapter(mAdapter = new DeviceListAdapter(getActivity()));
@@ -191,7 +188,11 @@ public class ScannerFragment extends DialogFragment {
 				stopScan();
 				dialog.dismiss();
 				final ExtendedBluetoothDevice d = (ExtendedBluetoothDevice) mAdapter.getItem(position);
-				mListener.onDeviceSelected(d.device, d.name);
+				/*
+				* CT Blackbox 5
+				* The listener launches the call back on the device selected passing the device and name as arguments
+				*/
+                mListener.onDeviceSelected(d.device, d.name);
 			}
 		});
 
@@ -216,6 +217,11 @@ public class ScannerFragment extends DialogFragment {
 		if (savedInstanceState == null)
 			startScan();
 		return dialog;
+	}
+
+	@Override
+	public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+		super.onViewCreated(view, savedInstanceState);
 	}
 
 	@Override
@@ -269,13 +275,10 @@ public class ScannerFragment extends DialogFragment {
 
 		final BluetoothLeScannerCompat scanner = BluetoothLeScannerCompat.getScanner();
 		final no.nordicsemi.android.support.v18.scanner.ScanSettings settings = new no.nordicsemi.android.support.v18.scanner.ScanSettings.Builder()
-//				.setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(1000).setUseHardwareBatchingIfSupported(false).build();
-//				.setScanMode(no.nordicsemi.android.support.v18.scanner.ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(1000).build();
 				.setScanMode(no.nordicsemi.android.support.v18.scanner.ScanSettings.SCAN_MODE_LOW_LATENCY).setReportDelay(1000).build();
 		final List<no.nordicsemi.android.support.v18.scanner.ScanFilter> filters = new ArrayList<>();
 
 		filters.add(new no.nordicsemi.android.support.v18.scanner.ScanFilter.Builder().setServiceUuid(mUuid).build());
-//		scanner.startScan(filters, settings, scanCallback);
 		scanner.startScan(filters, settings, scanCallback);
 		mIsScanning = true;
 		mHandler.postDelayed(new Runnable() {
@@ -324,5 +327,63 @@ public class ScannerFragment extends DialogFragment {
 	private void addBondedDevices() {
 		final Set<BluetoothDevice> devices = mBluetoothAdapter.getBondedDevices();
 		mAdapter.addBondedDevices(devices);
+	}
+
+	/*
+	* Cotham Technologies
+	*  Programmatic Layout
+	*
+	*/
+	private View fragmentDeviceSelection() {
+
+		/*Root layout for device selection*/
+		RelativeLayout rootLayout = new RelativeLayout(getContext());
+		RelativeLayout.LayoutParams rootLayoutParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+		rootLayoutParams.addRule(OrientationHelper.VERTICAL);
+		rootLayout.setLayoutParams(rootLayoutParams);
+
+//		/*Text View for permission rationale*/
+//		TextView permissionRationale = new TextView(getContext());
+//		permissionRationale.setId(R.id.permission_rationale);
+//		RelativeLayout.LayoutParams permissionRationalParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+//		permissionRationalParams.setMargins(0, 0, 0, 8);
+//		permissionRationale.setText(R.string.scanner_permission_rationale);
+//		permissionRationale.setVisibility(View.GONE);
+//		permissionRationale.setLayoutParams(permissionRationalParams);
+
+		/*List view to all the list of devices detected*/
+		ListView listView = new ListView(getContext());
+		listView.setId(R.id.list);
+		RelativeLayout.LayoutParams listViewParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+		listView.setPaddingRelative(24, 18, 24, 0);
+		listView.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
+		listView.setLayoutParams(listViewParams);
+
+		/*Button to scan*/
+		Button actionScanAndCancel = new Button(getContext(), null, buttonBarButtonStyle);
+		actionScanAndCancel.setId(R.id.action_cancel);
+		actionScanAndCancel.setText(R.string.scanner_action_cancel);
+		RelativeLayout.LayoutParams actionScanAndCancelParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+		actionScanAndCancelParams.addRule(RelativeLayout.BELOW, R.id.list);
+		actionScanAndCancel.setLayoutParams(actionScanAndCancelParams);
+
+		/*Empty View*/
+		TextView emptyView = new TextView(getContext());
+		emptyView.setId(R.id.empty);
+		RelativeLayout.LayoutParams emptyViewParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+		emptyView.setBackgroundColor(parseColor("#FFFFFF"));
+		emptyView.setElevation(8);
+		emptyView.setText(R.string.no_application);
+		emptyView.setPadding(32, 32, 32, 32);
+		emptyView.setGravity(ViewGroup.TEXT_ALIGNMENT_CENTER);
+		emptyView.setVisibility(ViewGroup.GONE);
+		emptyView.setLayoutParams(emptyViewParams);
+
+		/*Adding the views to the rootlayout*/
+		rootLayout.addView(listView);
+		rootLayout.addView(actionScanAndCancel);
+		rootLayout.addView(emptyView);
+
+		return rootLayout;
 	}
 }

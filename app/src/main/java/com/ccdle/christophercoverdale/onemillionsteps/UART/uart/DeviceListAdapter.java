@@ -23,11 +23,15 @@ package com.ccdle.christophercoverdale.onemillionsteps.UART.uart;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.support.v7.widget.OrientationHelper;
+import android.view.ContextThemeWrapper;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.ccdle.christophercoverdale.onemillionsteps.R;
@@ -37,6 +41,9 @@ import java.util.List;
 import java.util.Set;
 
 import no.nordicsemi.android.support.v18.scanner.ScanResult;
+
+import static android.graphics.Color.parseColor;
+import static com.ccdle.christophercoverdale.onemillionsteps.R.attr.listPreferredItemHeightSmall;
 
 //import no.nordicsemi.android.nrftoolbox.R;
 
@@ -171,22 +178,27 @@ public class DeviceListAdapter extends BaseAdapter {
 		switch (type) {
 		case TYPE_EMPTY:
 			if (view == null) {
-				view = inflater.inflate(R.layout.device_list_empty, parent, false);
+//				view = inflater.inflate(R.layout.device_list_empty, parent, false);
+				view = listEmpty();
 			}
 			break;
 		case TYPE_TITLE:
 			if (view == null) {
-				view = inflater.inflate(R.layout.device_list_title, parent, false);
+//				view = inflater.inflate(R.layout.device_list_title, parent, false);
+					view = deviceListTitle();
 			}
 			final TextView title = (TextView) view;
 			title.setText((Integer) getItem(position));
 			break;
 		default:
 			if (view == null) {
-				view = inflater.inflate(R.layout.device_list_row, parent, false);
+//				view = inflater.inflate(R.layout.device_list_row, parent, false);
+				view = deviceListRow();
 				final ViewHolder holder = new ViewHolder();
-				holder.name = (TextView) view.findViewById(R.id.name);
-				holder.address = (TextView) view.findViewById(R.id.address);
+				holder.name = (TextView) view.findViewById(R.id.device_name);
+//				holder.name = (TextView) view.findViewById(R.id.name);
+				holder.address = (TextView) view.findViewById(R.id.device_address);
+//				holder.address = (TextView) view.findViewById(R.id.address);
 				holder.rssi = (ImageView) view.findViewById(R.id.rssi);
 				view.setTag(holder);
 			}
@@ -213,5 +225,71 @@ public class DeviceListAdapter extends BaseAdapter {
 		private TextView name;
 		private TextView address;
 		private ImageView rssi;
+	}
+
+
+	/*
+	* Cotham Technologies
+	*  Programmatic Layout
+	*/
+	private View listEmpty() {
+		TextView listEmpty = new TextView(mContext);
+		RelativeLayout.LayoutParams listEmptyParams = new RelativeLayout.LayoutParams(listPreferredItemHeightSmall, ViewGroup.LayoutParams.MATCH_PARENT);
+		listEmptyParams.addRule(Gravity.CENTER);
+		listEmpty.setText(R.string.scanner_empty);
+		listEmpty.setLayoutParams(listEmptyParams);
+
+		return listEmpty;
+	}
+
+	private View deviceListTitle() {
+		ContextThemeWrapper newContext = new ContextThemeWrapper(mContext, R.style.Widget_ScannerSubtitle);
+		TextView deviceListTitle = new TextView(newContext);
+		RelativeLayout.LayoutParams deviceListTitleParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+		deviceListTitle.setLayoutParams(deviceListTitleParams);
+
+		return deviceListTitle;
+	}
+
+	private View deviceListRow() {
+		/*Device list row root layout*/
+		RelativeLayout deviceListRow = new RelativeLayout(mContext);
+		deviceListRow.setPadding(6, 6, 6, 6);
+		RelativeLayout.LayoutParams deviceListRowLayoutParams = new RelativeLayout.LayoutParams(listPreferredItemHeightSmall, ViewGroup.LayoutParams.MATCH_PARENT);
+		deviceListRowLayoutParams.addRule(OrientationHelper.VERTICAL);
+		deviceListRow.setLayoutParams(deviceListRowLayoutParams);
+
+		/*Image View for RSSI signal*/
+		ImageView rssi = new ImageView(mContext);
+		rssi.setId(R.id.rssi);
+		RelativeLayout.LayoutParams rssiParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+		rssiParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+		rssiParams.addRule(RelativeLayout.CENTER_VERTICAL);
+		rssi.setLayoutParams(rssiParams);
+
+		/*Text View for Device Name*/
+		TextView deviceName = new TextView(mContext);
+		deviceName.setId(R.id.device_name);
+		deviceName.setTextColor(parseColor("#000000"));
+		deviceName.setTextSize(14);
+		RelativeLayout.LayoutParams deviceNameParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+		deviceNameParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+		deviceName.setLayoutParams(deviceNameParams);
+
+		/*Text View for Device Address*/
+		TextView deviceAddress = new TextView(mContext);
+		deviceAddress.setId(R.id.device_address);
+		deviceAddress.setTextColor(parseColor("#000000"));
+		deviceAddress.setTextSize(12);
+		RelativeLayout.LayoutParams deviceAddressParams = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+		deviceAddressParams.addRule(RelativeLayout.BELOW, R.id.device_name);
+		deviceAddress.setLayoutParams(deviceAddressParams);
+
+		/*Add all the views to the device list row layout*/
+		deviceListRow.addView(rssi);
+		deviceListRow.addView(deviceName);
+		deviceListRow.addView(deviceAddress);
+
+		return deviceListRow;
 	}
 }

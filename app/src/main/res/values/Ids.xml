@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="mainVC_rootLayout" type="id"/>
+    <item name="rssi" type="id"/>
+    <item name="device_name" type="id"/>
+    <item name="device_address" type="id"/>
+    <item name="permission_rationale" type="id"/>
+    <item name="list" type="id"/>
+    <item name="action_cancel" type="id"/>
+    <item name="empty" type="id"/>
+    <item name="send_commands" type="id"/>
+    <item name="step_count_view" type="id"/>
+    <item name="launch_scan_for_bluetooth_devices" type="id"/>
 </resources>

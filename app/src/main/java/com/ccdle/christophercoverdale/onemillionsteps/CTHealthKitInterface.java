@@ -6,9 +6,12 @@ package com.ccdle.christophercoverdale.onemillionsteps;
 
 public interface CTHealthKitInterface {
     void setCTHealthKitCallback(CTHealthKitCallback CTHealthKitCallback);
-    void getRequestForAllStepCounts();
+    void initializeRealmInstance();
+    void getPedometerStepCountFromBluetoothClient();
+    void writeStepCountToHealthStore();
+    int readStepCountFromHKStore();
 
     interface CTHealthKitCallback {
-        void healthKitIsConnected();
+        void sendTotalStepCount(int stepCount);
     }
 }

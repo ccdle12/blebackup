@@ -57,10 +57,17 @@ public class UARTService extends BleProfileService implements UARTManagerCallbac
 
 	private final LocalBinder mBinder = new UARTBinder();
 
+	private UARTInterface.UARTInterfaceCallback UARTInterfaceCallback;
+
 	public class UARTBinder extends LocalBinder implements UARTInterface {
 		@Override
 		public void send() {
 			mManager.sendCommandToRXCharacteristic();
+		}
+
+		@Override
+		public void setUARTInterfaceCallback(UARTInterfaceCallback callback) {
+			UARTInterfaceCallback = callback;
 		}
 	}
 
@@ -69,6 +76,11 @@ public class UARTService extends BleProfileService implements UARTManagerCallbac
 		return mBinder;
 	}
 
+	/*
+	* CT Blackbox 8
+	* returns a UARTManager object
+	*
+	*/
 	@Override
 	protected BleManager<UARTManagerCallbacks> initializeManager() {
 		return mManager = new UARTManager(this);
@@ -114,6 +126,9 @@ public class UARTService extends BleProfileService implements UARTManagerCallbac
 
 	@Override
 	public void onDataReceived(final BluetoothDevice device, final String data) {
+
+		this.UARTInterfaceCallback.characteristicReceivedFromDevice();
+
 		final Intent broadcast = new Intent(BROADCAST_UART_RX);
 		broadcast.putExtra(EXTRA_DEVICE, getBluetoothDevice());
 		broadcast.putExtra(EXTRA_DATA, data);

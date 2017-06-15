@@ -26,4 +26,9 @@ package com.ccdle.christophercoverdale.onemillionsteps.UART.uart;
 public interface UARTInterface {
 
 	void send();
+	void setUARTInterfaceCallback(UARTInterfaceCallback callback);
+
+	interface UARTInterfaceCallback {
+		void characteristicReceivedFromDevice();
+	}
 }

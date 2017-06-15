@@ -1,195 +1,142 @@
 package com.ccdle.christophercoverdale.onemillionsteps;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.IntentSender;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.ccdle.christophercoverdale.onemillionsteps.CTHelpers.PackageModel;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.Scopes;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.Scope;
-import com.google.android.gms.fitness.Fitness;
-import com.google.android.gms.fitness.data.Bucket;
-import com.google.android.gms.fitness.data.DataPoint;
-import com.google.android.gms.fitness.data.DataSet;
-import com.google.android.gms.fitness.data.DataType;
-import com.google.android.gms.fitness.data.Field;
-import com.google.android.gms.fitness.request.DataReadRequest;
-import com.google.android.gms.fitness.result.DataReadResult;
-
-import java.text.DateFormat;
-import java.util.Calendar;
+import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+
+import io.realm.Realm;
+import io.realm.RealmConfiguration;
+import io.realm.RealmResults;
 
 /**
  * Created by USER on 5/6/2017.
  */
 
-public class CTHealthKit implements CTHealthKitInterface,
-        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+public class CTHealthKit implements CTHealthKitInterface {
 
-    private static final String DEBUG_TAG = "CTHealthKit";
-    private static final int REQUEST_OATH = 1;
-    private boolean authInProgress = false;
-
-    private PackageModel packageModel;
-    private Activity activity;
-    private Context context;
-
-    private GoogleApiClient healthStoreClient;
+    private Realm realmInstance;
     private CTHealthKitCallback CTHealthKitCallback;
+    private CTBluetoothClientInterface CTBluetoothClientInterface;
+    private int newPedometerStepCountReading;
 
-    private int stepCountFromHealthStore;
 
-    CTHealthKit(PackageModel packageModel) {
-        setPackageModel(packageModel);
-        setContext();
-        setActivity();
-        buildHealthStoreClient();
-        connectToHealthStore();
-    }
-
-    private void setPackageModel(PackageModel packageModel) {
-        this.packageModel = packageModel;
-    }
-    private void setActivity() {
-        this.activity = this.packageModel.getActivity();
-    }
-    private void setContext() {
-        this.context = this.packageModel.getContext();
-    }
-    private void buildHealthStoreClient() {
-        this.healthStoreClient = new GoogleApiClient.Builder(this.context)
-                .addApi(Fitness.HISTORY_API)
-                .addScope(new Scope(Scopes.FITNESS_ACTIVITY_READ_WRITE))
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-    }
-    private void connectToHealthStore() {
-        this.healthStoreClient.connect();
+    CTHealthKit() {
+        this.CTBluetoothClientInterface = new CTBluetoothClient();
     }
 
 
     /*CTHealthKit Interface*/
+    @Override
+    public void initializeRealmInstance() {
+        RealmConfiguration config = new RealmConfiguration.Builder()
+                .deleteRealmIfMigrationNeeded()
+                .build();
+
+        this.realmInstance = Realm.getInstance(config);
+    }
+
     @Override
     public void setCTHealthKitCallback(CTHealthKitCallback CTHealthKitCallback) {
         this.CTHealthKitCallback = CTHealthKitCallback;
     }
 
     @Override
-    public void getRequestForAllStepCounts() {
-        new GetRequestTotalStepCount()
-                .execute();
+    public void getPedometerStepCountFromBluetoothClient() {
+        setNewPedometerStepCountReading(this.CTBluetoothClientInterface.getPedometerStepCount());
     }
 
+    private void setNewPedometerStepCountReading(int stepCount) {
+        this.newPedometerStepCountReading = stepCount;
+        Log.d("CTHealthKit", "Retrieving pedometer step count: " + this.newPedometerStepCountReading);
 
-    /*Health Store On Connected Callbacks*/
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        this.CTHealthKitCallback.healthKitIsConnected();
+        this.writeStepCountToHealthStore();
     }
 
     @Override
-    public void onConnectionSuspended(int i) {
-        Log.e(DEBUG_TAG, "Health Store connection suspended");
-    }
+    public void writeStepCountToHealthStore() {
+        this.initializeRealmInstance();
 
-    /*Health Store on Connection Failed Callback*/
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.e(DEBUG_TAG, "Health Store connection failed");
+        CTHKStore CTHKStore = findExistingCTHKStoreObjectInRealm();
 
-        if (!authInProgress) {
-            authInProgress = true;
-            try {
-                connectionResult.startResolutionForResult(this.activity, REQUEST_OATH);
-            } catch (IntentSender.SendIntentException e) {
-                e.printStackTrace();
-            }
+        String todaysDate = currentDate();
+
+
+        this.realmInstance.beginTransaction();
+
+        if (CTHKStore == null) {
+            CTHKStore = this.realmInstance.createObject(CTHKStore.class, 0);
+            CTHKStore.setStepCount(this.newPedometerStepCountReading);
+            CTHKStore.setLastPedometerStepCountReading(this.newPedometerStepCountReading);
+            CTHKStore.setLastUpdateTimeStamp(todaysDate);
+
         } else {
-            Log.e("GoogleFit", "authInProgress");
+
+            int realDifferenceInPedometerStepCount = this.newPedometerStepCountReading - CTHKStore.getLastPedometerStepCountReading();
+
+            Log.d("CTHealthKit", "Todays Date: " + todaysDate.toString());
+            Log.d("CTHealthKit", "Last updated Date: " + CTHKStore.getLastUpdateTimeStamp().toString());
+            Log.d("CTHealthKit", "Last pedometer step count reading: " + CTHKStore.getLastPedometerStepCountReading());
+            Log.d("CTHealthKit", "new pedometer step : " + this.newPedometerStepCountReading);
+
+
+            if (!CTHKStore.getLastUpdateTimeStamp().equals(todaysDate)) {
+                int newTotalStepCount = CTHKStore.getStepCount() + this.newPedometerStepCountReading;
+
+                CTHKStore.setStepCount(newTotalStepCount);
+                CTHKStore.setLastPedometerStepCountReading(this.newPedometerStepCountReading);
+                CTHKStore.setLastUpdateTimeStamp(todaysDate);
+            }
+            else if (CTHKStore.getLastUpdateTimeStamp().equals(todaysDate) && realDifferenceInPedometerStepCount > 0) {
+                int newTotalStepCount = CTHKStore.getStepCount() + realDifferenceInPedometerStepCount;
+
+                CTHKStore.setStepCount(newTotalStepCount);
+                CTHKStore.setLastPedometerStepCountReading(this.newPedometerStepCountReading);
+
+            } else {
+                Log.d("CTHealthKit", "Already written this data today");
+            }
         }
+
+        this.realmInstance.commitTransaction();
+
+        this.CTHealthKitCallback.sendTotalStepCount(this.readStepCountFromHKStore());
+    }
+
+    @Override
+    public int readStepCountFromHKStore() {
+
+        CTHKStore CTHKStore = findExistingCTHKStoreObjectInRealm();
+
+        int stepCountFromHKStore = CTHKStore.getStepCount();
+
+        Log.d("CTHealthKit", "Step Count Read: " + stepCountFromHKStore);
+        return stepCountFromHKStore;
     }
 
 
-    /*Async Classes - retrieves the 1 year step count*/
-    private class GetRequestTotalStepCount extends AsyncTask<Void, Void, Void> {
-        DataReadResult dataReadResult;
+    private CTHKStore findExistingCTHKStoreObjectInRealm(){
+        CTHKStore CTHKStore = this.realmInstance.where(CTHKStore.class).equalTo("id", 0).findFirst();
 
-        protected Void doInBackground(Void... params) {
-            Calendar cal = Calendar.getInstance();
-            Date now = new Date();
-            cal.setTime(now);
-            long endTime = cal.getTimeInMillis();
-            cal.add(Calendar.YEAR, -1);
-            long startTime = cal.getTimeInMillis();
-
-            java.text.DateFormat dateFormat = DateFormat.getDateInstance();
-            Log.e("History", "Range Start: " + dateFormat.format(startTime));
-            Log.e("History", "Range End: " + dateFormat.format(endTime));
-
-            DataReadRequest readRequest = new DataReadRequest.Builder()
-                    .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
-                    .bucketByTime(1, TimeUnit.DAYS)
-                    .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
-                    .build();
-
-            dataReadResult = Fitness.HistoryApi.readData(healthStoreClient, readRequest).await(1, TimeUnit.MINUTES);
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(Void aVoid) {
-            //Used for aggregated data
-            if (dataReadResult.getBuckets().size() > 0) {
-                Log.e("History", "Number of buckets: " + dataReadResult.getBuckets().size());
-                for (Bucket bucket : dataReadResult.getBuckets()) {
-                    List<DataSet> dataSets = bucket.getDataSets();
-                    for (DataSet dataSet : dataSets) {
-                        retrieveTotalStepCountHistory(dataSet);
-                    }
-                }
-            }
-            //Used for non-aggregated data
-            else if (dataReadResult.getDataSets().size() > 0) {
-                Log.e("History", "Number of returned DataSets: " + dataReadResult.getDataSets().size());
-                for (DataSet dataSet : dataReadResult.getDataSets()) {
-                    retrieveTotalStepCountHistory(dataSet);
-                }
-            }
-
-            /*Cache Health Kit Step Count*/
-            CTHealthDataSingleton.cacheHealthStoreStepCount(stepCountFromHealthStore);
-        }
-
-        private void retrieveTotalStepCountHistory(DataSet dataSet) {
-            DateFormat dateFormat = DateFormat.getDateInstance();
-            DateFormat timeFormat = DateFormat.getTimeInstance();
-
-
-            for (DataPoint dp : dataSet.getDataPoints()) {
-                Log.e("History", "Data point:");
-
-                Log.e("History", "\tType: " + dp.getDataType().getName());
-                Log.e("History", "\tStart: " + dateFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)) + " " + timeFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
-                Log.e("History", "\tEnd: " + dateFormat.format(dp.getEndTime(TimeUnit.MILLISECONDS)) + " " + timeFormat.format(dp.getStartTime(TimeUnit.MILLISECONDS)));
-                for (Field field : dp.getDataType().getFields()) {
-                    Log.e("History", "\tField: " + field.getName() +
-                            " Value: " + dp.getValue(field));
-                    stepCountFromHealthStore += Integer.valueOf(String.valueOf(dp.getValue(field)));
-
-                }
-            }
-            Log.e("History", "Step Count from HealthStore: " + stepCountFromHealthStore);
-        }
+        return CTHKStore;
     }
+
+    private String currentDate() {
+        Date currentDate = new Date();
+        String stringCurrentDate = new SimpleDateFormat("yyyy-MM-dd").format(currentDate);
+
+        return stringCurrentDate;
+    }
+
+    private void deleteAllCTHKStoreObjects() {
+
+        RealmResults<CTHKStore> results = this.realmInstance.where(CTHKStore.class).findAll();
+
+        this.realmInstance.beginTransaction();
+        results.deleteAllFromRealm();
+        this.realmInstance.commitTransaction();
+
+    }
+
+
 }

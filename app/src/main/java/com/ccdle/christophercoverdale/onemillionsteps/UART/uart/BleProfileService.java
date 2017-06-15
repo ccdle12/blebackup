@@ -80,10 +80,8 @@ public abstract class BleProfileService extends Service implements BleManagerCal
 		@Override
 		public void onReceive(final Context context, final Intent intent) {
 			final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.STATE_OFF);
-//			final ILogger logger = getBinder();
 
 			final String stateString = "[Broadcast] Action received: " + BluetoothAdapter.ACTION_STATE_CHANGED + ", state changed to " + state2String(state);
-//			logger.log(LogContract.Log.Level.DEBUG, stateString);
 
 			switch (state) {
 				case BluetoothAdapter.STATE_ON:
@@ -181,26 +179,6 @@ public abstract class BleProfileService extends Service implements BleManagerCal
 			return mBleManager.getConnectionState();
 		}
 
-//		/**
-//		 * Returns the log session that can be used to append log entries.
-//		 * The log session is created when the service is being created.
-//		 * The method returns <code>null</code> if the nRF Logger app was not installed.
-//		 *
-//		 * @return the log session
-//		 */
-//		public ILogSession getLogSession() {
-//			return mLogSession;
-//		}
-//
-//		@Override
-//		public void log(final int level, final String message) {
-//			Logger.log(mLogSession, level, message);
-//		}
-//
-//		@Override
-//		public void log(final int level, final @StringRes int messageRes, final Object... params) {
-//			Logger.log(mLogSession, level, messageRes, params);
-//		}
 	}
 
 	/**
@@ -273,6 +251,12 @@ public abstract class BleProfileService extends Service implements BleManagerCal
 		// empty default implementation
 	}
 
+	/*
+	* CT Blackbox 7
+	* Service to connect to the ble device has been launched
+	* Create the bleManager which manages the connection and callbacks to the blue tooth device
+	* InitializeManager method is triggered in the UARTService class
+	*/
 	@SuppressWarnings("unchecked")
 	@Override
 	public void onCreate() {

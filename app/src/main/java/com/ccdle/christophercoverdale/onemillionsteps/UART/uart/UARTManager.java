@@ -26,19 +26,18 @@ import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
-import android.support.annotation.StringRes;
-import android.util.Log;
 
-import com.ccdle.christophercoverdale.onemillionsteps.CTHelpers.CTBluetoothDataHelper;
+import com.ccdle.christophercoverdale.onemillionsteps.CTBluetoothClient;
+import com.ccdle.christophercoverdale.onemillionsteps.CTBluetoothClientInterface;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Deque;
 import java.util.LinkedList;
 import java.util.UUID;
 
-import static com.ccdle.christophercoverdale.onemillionsteps.UART.uart.UARTControlFragment.DEBUG_TAG;
-
 public class UARTManager extends BleManager<UARTManagerCallbacks>  {
+
+	private final String DEBUG_TAG = "UARTManager";
 
 	/*Fast Go Prime Commands*/
 	/*Cotham Technologies*/
@@ -57,9 +56,11 @@ public class UARTManager extends BleManager<UARTManagerCallbacks>  {
 	private byte[] mOutgoingBuffer;
 	private int mBufferOffset;
 
+	private CTBluetoothClientInterface CTBluetoothClientInterface;
 
 	public UARTManager(final Context context) {
 		super(context);
+		this.CTBluetoothClientInterface = new CTBluetoothClient();
 	}
 
 
@@ -72,6 +73,11 @@ public class UARTManager extends BleManager<UARTManagerCallbacks>  {
 	 */
 	private final BleManagerGattCallback mGattCallback = new BleManagerGattCallback() {
 
+		/*
+		* CT Blackbox 11
+		* Add a request to a queue to enable notifications from a characteristic
+		*
+		*/
 		@Override
 		protected Deque<Request> initGatt(final BluetoothGatt gatt) {
 			final LinkedList<Request> requests = new LinkedList<>();
@@ -79,6 +85,11 @@ public class UARTManager extends BleManager<UARTManagerCallbacks>  {
 			return requests;
 		}
 
+		/*
+		* CT Blackbox 10
+		* This is the callback for identifying and instantiating the service and characterisitics we need to read and write to
+		*
+		*/
 		@Override
 		public boolean isRequiredServiceSupported(final BluetoothGatt gatt) {
 			final BluetoothGattService service = gatt.getService(UART_SERVICE_UUID);
@@ -133,11 +144,8 @@ public class UARTManager extends BleManager<UARTManagerCallbacks>  {
 		public void onCharacteristicNotified(final BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
 			final String data = characteristic.getStringValue(0);
 
-			try {
-				Log.e(DEBUG_TAG, "Ble steps: " + CTBluetoothDataHelper.getStepCountAsInt(characteristic));
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
+			CTBluetoothClientInterface.sendStepCountCharacteristic(characteristic);
+
 			mCallbacks.onDataReceived(gatt.getDevice(), data);
 
 		}
@@ -178,13 +186,4 @@ public class UARTManager extends BleManager<UARTManagerCallbacks>  {
 		}
 	}
 
-	@Override
-	public void log(int level, String message) {
-
-	}
-
-	@Override
-	public void log(int level, @StringRes int messageRes, Object... params) {
-
-	}
 }

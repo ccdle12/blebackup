@@ -41,12 +41,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import com.ccdle.christophercoverdale.onemillionsteps.R;
-
 import java.util.UUID;
-
-import no.nordicsemi.android.log.ILogSession;
-import no.nordicsemi.android.log.Logger;
 
 /**
  * <p>
@@ -77,8 +72,6 @@ public abstract class BleProfileServiceReadyActivity<E extends BleProfileService
 
 	private BluetoothDevice mBluetoothDevice;
 	private String mDeviceName;
-
-	private ILogSession mLogSession;
 
 	private final BroadcastReceiver mCommonBroadcastReceiver = new BroadcastReceiver() {
 		@Override
@@ -352,13 +345,13 @@ public abstract class BleProfileServiceReadyActivity<E extends BleProfileService
 	 */
 	protected final void setUpView() {
 		// set GUI
-		mConnectButton = (Button) getActivity().findViewById(R.id.action_connect);
-		if (mConnectButton == null) {
-		}
-
-		mDeviceNameView = (TextView) getActivity().findViewById(R.id.device_name);
-		if (mDeviceNameView == null) {
-		}
+//		mConnectButton = (Button) getActivity().findViewById(R.id.action_connect);
+//		if (mConnectButton == null) {
+//		}
+//
+//		mDeviceNameView = (TextView) getActivity().findViewById(R.id.device_name);
+//		if (mDeviceNameView == null) {
+//		}
 	}
 
 	@Override
@@ -394,22 +387,7 @@ public abstract class BleProfileServiceReadyActivity<E extends BleProfileService
 		return false;
 	}
 
-//	@Override
-//	public boolean onOptionsItemSelected(final MenuItem item) {
-//		final int id = item.getItemId();
-//		switch (id) {
-//			case android.R.id.home:
-//				onBackPressed();
-//				break;
-//			case R.id.action_about:
-////				final AppHelpFragment fragment = AppHelpFragment.getInstance(getAboutTextId());
-////				fragment.show(getSupportFragmentManager(), "help_fragment");
-//				break;
-//			default:
-//				return onOptionsItemSelected(id);
-//		}
-//		return true;
-//	}
+
 
 	/**
 	 * Called when user press CONNECT or DISCONNECT button. See layout files -> onClick attribute.
@@ -459,31 +437,23 @@ public abstract class BleProfileServiceReadyActivity<E extends BleProfileService
 		return null;
 	}
 
+	/*
+	* CT Blackbox 6
+	* This is the callback for the onDeviceSelected
+	* The reason why the callback is here, is because this abstract class is IMPLEMENTED in our parent/root fragment (at the moment it's UARTControlfragment)
+	* It takes the device information and launches the BleProfileService and binds that service to the parent/root fragment
+	*/
 	@Override
 	public void onDeviceSelected(final BluetoothDevice device, final String name) {
-//		final int titleId = getLoggerProfileTitle();
-//		if (titleId > 0) {
-//			mLogSession = no.nordicsemi.android.log.Logger.newSession(getActivity().getApplicationContext(), getString(titleId), device.getAddress(), name);
-//			 If nRF Logger is not installed we may want to use local logger
-//			if (mLogSession == null && getLocalAuthorityLogger() != null) {
-//				mLogSession = LocalLogSession.newSession(getActivity().getApplicationContext(), getLocalAuthorityLogger(), device.getAddress(), name);
-//			}
-//		}
+
 		mBluetoothDevice = device;
 		mDeviceName = name;
-//		mDeviceNameView.setText(name != null ? name : getString(R.string.not_available));
-//		mConnectButton.setText(R.string.action_connecting);
 
 		// The device may not be in the range but the service will try to connect to it if it reach it
-		/*Test*/
-		Logger.d(mLogSession, "Creating service...");
 		final Intent service = new Intent(getContext(), getServiceClass());
 		service.putExtra(BleProfileService.EXTRA_DEVICE_ADDRESS, device.getAddress());
 		service.putExtra(BleProfileService.EXTRA_DEVICE_NAME, name);
-//		if (mLogSession != null)
-//			service.putExtra(BleProfileService.EXTRA_LOG_URI, mLogSession.getSessionUri());
 		getActivity().startService(service);
-		Logger.d(mLogSession, "Binding to the service...");
 		getActivity().bindService(service, mServiceConnection, 0);
 	}
 
